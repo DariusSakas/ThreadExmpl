@@ -1,8 +1,9 @@
+import com.sun.xml.internal.messaging.saaj.packaging.mime.util.BEncoderStream;
 import jdk.nashorn.internal.codegen.CompilerConstants;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Main {
     static int factorialResult;
@@ -285,7 +286,7 @@ class CountDownLatchEx {
 
 class Friend extends Thread {
     String name;
-    private CountDownLatch countDownLatch;
+    CountDownLatch countDownLatch;
 
     public Friend(String name, CountDownLatch countDownLatch) {
         this.name = name;
@@ -300,5 +301,254 @@ class Friend extends Thread {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+}
+
+class ExchangerExmpl {
+
+    public static void main(String[] args) {
+        Exchanger<Action> exchanger = new Exchanger<>();
+        List<Action> f1Actions = new ArrayList<>();
+        f1Actions.add(Action.SCISSOR);
+        f1Actions.add(Action.PAPER);
+        f1Actions.add(Action.SCISSOR);
+
+        List<Action> f2Actions = new ArrayList<>();
+        f2Actions.add(Action.PAPER);
+        f2Actions.add(Action.ROCK);
+        f2Actions.add(Action.ROCK);
+
+        new SomeNewFriend("F1", f1Actions, exchanger);
+        new SomeNewFriend("F2", f2Actions, exchanger);
+    }
+}
+
+enum Action {
+    ROCK, SCISSOR, PAPER;
+}
+
+class SomeNewFriend extends Thread {
+    private String name;
+    private List<Action> myActions;
+    private Exchanger<Action> exchanger;
+
+    public SomeNewFriend(String name, List<Action> myActions, Exchanger<Action> exchanger) {
+        this.name = name;
+        this.myActions = myActions;
+        this.exchanger = exchanger;
+        this.start();
+    }
+
+    private void whoWins(Action myAction, Action friendsAction) {
+        if ((myAction == Action.ROCK && friendsAction == Action.SCISSOR)
+                || (myAction == Action.SCISSOR && friendsAction == Action.PAPER)
+                || (myAction == Action.PAPER && friendsAction == Action.ROCK)) {
+            System.out.println("WINNER: " + name);
+        }
+    }
+
+    public void run() {
+        Action reply;
+        for (Action action : myActions) {
+            try {
+                reply = exchanger.exchange(action);
+                whoWins(action, reply);
+                sleep(2000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+class AtomicIntegerExmpl {
+    // static  int counter = 0;
+
+    static AtomicInteger counter = new AtomicInteger(0); //0 by default not necessary
+
+    public static void increment() {
+        //  counter++;
+        counter.incrementAndGet();
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        Thread thread1 = new Thread(new MyRunnableImplementation());
+        Thread thread2 = new Thread(new MyRunnableImplementation());
+
+        thread1.start();
+        thread2.start();
+
+        thread1.join();
+        thread2.join();
+
+        System.out.println(counter);
+    }
+}
+
+class MyRunnableImplementation implements Runnable {
+
+    @Override
+    public void run() {
+        for (int i = 0; i < 100; i++) {
+            AtomicIntegerExmpl.increment();
+        }
+    }
+}
+
+class SynchronizedcollectionExmpl {
+    public static void main(String[] args) throws InterruptedException {
+        ArrayList<Integer> source = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            source.add(i);
+        }
+
+        // ArrayList<Integer > target = new ArrayList<>();
+        List<Integer> syncList =
+                Collections.synchronizedList(new ArrayList<>());
+        Runnable runnable = () -> {
+            syncList.addAll(source);
+        };
+
+        Thread thread1 = new Thread(runnable);
+
+        Thread thread2 = new Thread(runnable);
+
+        thread1.start();
+        thread2.start();
+
+        thread1.join();
+        thread2.join();
+
+        System.out.println(syncList);
+    }
+}
+
+class SynchronizedcollectionExmpl2 {
+    public static void main(String[] args) throws InterruptedException {
+        ArrayList<Integer> source = new ArrayList<>();
+        for (int i = 0; i < 1000; i++) {
+            source.add(i);
+        }
+
+        List<Integer> synchedList = Collections.synchronizedList(source);
+
+        Runnable runnable1 = () -> {
+            Iterator<Integer> iterator = synchedList.iterator();
+
+            synchronized (synchedList) {
+                while (iterator.hasNext()) {
+                    System.out.println(iterator.next());
+                }
+            }
+        };
+        Runnable runnable2 = () -> {
+            synchedList.remove(10);
+
+        };
+
+        Thread thread1 = new Thread(runnable1);
+        Thread thread2 = new Thread(runnable2);
+
+        thread1.start();
+        thread2.start();
+
+        thread1.join();
+        thread2.join();
+
+        System.out.println(source);
+    }
+
+}
+
+class ConcurrentHasMapExmpl {
+    public static void main(String[] args) throws InterruptedException {
+        ConcurrentHashMap<Integer, String> map = new ConcurrentHashMap<>();
+        map.put(1, "P1");
+        map.put(2, "P2");
+        map.put(3, "P3");
+        map.put(4, "P4");
+        map.put(5, "P5");
+        map.put(6, "P6");
+        System.out.println(map);
+
+        Runnable runnable1 = () -> {
+            Iterator<Integer> iterator = map.keySet().iterator();
+            while (iterator.hasNext()) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                Integer i = iterator.next();
+                System.out.println(i + " : " + map.get(i));
+            }
+        };
+
+        Runnable runnable2 = () -> {
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            map.put(7, "New Added Person");
+
+        };
+        Thread thread1 = new Thread(runnable1);
+        Thread thread2 = new Thread(runnable2);
+
+        thread1.start();
+        thread2.start();
+
+        thread1.join();
+        thread2.join();
+
+        System.out.println(map);
+    }
+}
+
+class CopyOnwriteArrayListEx {
+    public static void main(String[] args) throws InterruptedException {
+        ArrayList<String> list = new ArrayList<>();
+        list.add("P1");
+        list.add("P2");
+        list.add("P3");
+        list.add("P4");
+        list.add("P5");
+        list.add("P6");
+
+        System.out.println(list);
+        Runnable runnable1 = () -> {
+            Iterator<String> iterator = list.iterator();
+            while (iterator.hasNext()) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println(iterator.hasNext());
+            }
+        };
+        Runnable runnable2 = () -> {
+
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            list.remove(4);
+            list.add("Adding new P");
+
+        };
+        Thread thread1 = new Thread(runnable1);
+        Thread thread2 = new Thread(runnable2);
+
+        thread1.start();
+        thread2.start();
+
+        thread1.join();
+        thread2.join();
+
+        System.out.println(list );
     }
 }
