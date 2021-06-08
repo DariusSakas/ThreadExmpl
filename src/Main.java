@@ -237,9 +237,68 @@ class Person extends Thread {
             System.out.println(name + " done call");
         } catch (InterruptedException e) {
             e.printStackTrace();
-        }
-        finally {
+        } finally {
             callBox.release();
+        }
+    }
+}
+
+class CountDownLatchEx {
+    static CountDownLatch countDownLatch = new CountDownLatch(3);
+
+    public static void isStaffInMarktet() throws InterruptedException {
+        Thread.sleep(2000);
+        System.out.println("Market staff came to work");
+        countDownLatch.countDown();
+        System.out.println("countDownLatch: " + countDownLatch.getCount());
+
+    }
+
+    public static void isMarketReady() throws InterruptedException {
+        Thread.sleep(3000);
+        System.out.println("Market getting prepared");
+        countDownLatch.countDown();
+        System.out.println("countDownLatch: " + countDownLatch.getCount());
+
+    }
+
+    public static void isMarketOpen() throws InterruptedException {
+        Thread.sleep(4000);
+        System.out.println("Market gets opened");
+        countDownLatch.countDown();
+        System.out.println("countDownLatch: " + countDownLatch.getCount());
+
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        new Friend("F1", countDownLatch);
+        new Friend("F2", countDownLatch);
+        new Friend("F3", countDownLatch);
+        new Friend("F4", countDownLatch);
+        new Friend("F5", countDownLatch);
+
+        isStaffInMarktet();
+        isMarketReady();
+        isMarketOpen();
+    }
+}
+
+class Friend extends Thread {
+    String name;
+    private CountDownLatch countDownLatch;
+
+    public Friend(String name, CountDownLatch countDownLatch) {
+        this.name = name;
+        this.countDownLatch = countDownLatch;
+        this.start();
+    }
+
+    public void run() {
+        try {
+            countDownLatch.await();
+            System.out.println("buying something, person: " + name);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 }
